@@ -1,0 +1,46 @@
+from langchain_ollama import OllamaEmbeddings
+from langchain_community.document_loaders import PyPDFLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.vectorstores import Chroma 
+from dotenv import load_dotenv
+from langchain_community.document_loaders import WebBaseLoader
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_groq import ChatGroq
+from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from langchain.schema.runnable import RunnableParallel, RunnableBranch, RunnableLambda, RunnablePassthrough
+
+load_dotenv()
+
+simple_llm  = ChatGroq(
+     model="llama-3.1-8b-instant"
+)
+
+webloader_prompt = PromptTemplate(
+    template="""
+        Answer the following question \n {question} from the
+        following text \n {text}
+""",
+input_variables=["question","text"]
+)
+
+string_parser = StrOutputParser()
+
+url = input("Enter the URL Path here : ")
+
+webloader_loading = WebBaseLoader(url)
+
+webloader_loaded = webloader_loading.load()
+
+webloader_chain = webloader_prompt | simple_llm | string_parser
+
+chat_history=[]
+
+while True:
+  query = input("Please ask question related to the webpage information : ")
+  chat_history.append(query)
+  if query == 'exit':
+    break
+  webloader_output = webloader_chain.invoke({'question':query,'text':webloader_loaded[0].page_content})
+  chat_history.append(webloader_output)
+  print(webloader_output)
